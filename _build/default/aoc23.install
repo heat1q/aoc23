@@ -1,0 +1,9 @@
+lib: [
+  "_build/install/default/lib/aoc23/META"
+  "_build/install/default/lib/aoc23/dune-package"
+  "_build/install/default/lib/aoc23/opam"
+]
+bin: [
+  "_build/install/default/bin/day01"
+  "_build/install/default/bin/day02"
+]
