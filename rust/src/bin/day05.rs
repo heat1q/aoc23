@@ -1,4 +1,5 @@
-use std::ops::Deref;
+use rayon::prelude::*;
+use std::{ops::Deref, time::Instant};
 
 #[derive(Debug)]
 struct RangeMapper {
@@ -57,28 +58,55 @@ impl Map {
     }
 }
 
+#[derive(Debug)]
+struct Seed {
+    start: i64,
+    range: i64,
+}
+
+impl Seed {
+    fn from_slice(chunk: &[i64]) -> Self {
+        Self {
+            start: chunk[0],
+            range: chunk[1],
+        }
+    }
+}
+
+fn parse_seeds(line: &str) -> Vec<Seed> {
+    line.split(' ')
+        .filter_map(|s| s.parse::<i64>().ok())
+        .collect::<Vec<i64>>()
+        .chunks(2)
+        .map(Seed::from_slice)
+        .collect()
+}
+
 fn find_lowest_location(lines: &[String]) -> Option<i64> {
     let mut lines_iter = lines.split(String::is_empty);
-    let seeds: Vec<i64> = lines_iter
-        .next()
-        .map_or("", |s| s[0].as_str())
-        .split(' ')
-        .filter_map(|s| s.parse::<i64>().ok())
-        .collect();
+    let seeds = parse_seeds(&lines_iter.next().unwrap()[0]);
     let mapper = lines_iter.map(Map::from_input).collect::<Vec<Map>>();
-    println!("mapper: {mapper:?}");
 
     seeds
-        .iter()
-        .copied()
-        .map(|s| mapper.iter().fold(s, |acc, n| n.map(acc)))
+        .par_iter()
+        .filter_map(|Seed { start, range }| {
+            println!("parse seed {start}");
+            let iter = *start..(start + range);
+            let start = Instant::now();
+            let min = iter
+                .map(|s| mapper.iter().fold(s, |acc, n| n.map(acc)))
+                //.map(|_| 0)
+                .min();
+            println!("found min: took {:?}", start.elapsed());
+            min
+        })
         .min()
 }
 
 fn main() {
     let lines = aoc23::read_lines("../inputs/day05.txt");
-    let part_1 = find_lowest_location(&lines).unwrap();
-    println!("part_1 {part_1}");
+    let min = find_lowest_location(&lines).unwrap();
+    println!("min {min}");
 }
 
 #[cfg(test)]
