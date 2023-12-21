@@ -3,9 +3,9 @@ use std::{cmp::Ordering, iter};
 
 fn map_score(card: u8) -> u64 {
     match card {
+        b'J' => 1,
         b'2'..=b'9' => (card - b'0') as u64,
         b'T' => 10,
-        b'J' => 11,
         b'Q' => 12,
         b'K' => 13,
         b'A' => 14,
@@ -21,26 +21,41 @@ struct Hand<'a> {
 
 impl<'a> Hand<'a> {
     fn from_input(hand: &'a str) -> Self {
-        let freq: Vec<u8> = hand
+        let freq = hand
             .as_bytes()
             .iter()
             .fold([0; 127], |mut acc: [u8; 127], n| {
                 acc[*n as usize] += 1;
                 acc
-            })
+            });
+
+        let num_jokers = freq[b'J' as usize];
+        if num_jokers == 5 {
+            return Self { hand, score: 7 };
+        }
+
+        let mut freq: Vec<u8> = freq
             .into_iter()
             .enumerate()
-            .filter_map(|(_card, freq)| if freq > 0 { Some(freq) } else { None })
+            .filter_map(|(card, freq)| {
+                if freq > 0 && card as u8 != b'J' {
+                    Some(freq)
+                } else {
+                    None
+                }
+            })
             .sorted()
+            .rev()
             .collect();
 
+        freq[0] += num_jokers;
         let score = match freq[..] {
             [5] => 7,
-            [1, 4] => 6,
-            [2, 3] => 5,
-            [1, 1, 3] => 4,
-            [1, 2, 2] => 3,
-            [1, 1, 1, 2] => 2,
+            [4, 1] => 6,
+            [3, 2] => 5,
+            [3, 1, 1] => 4,
+            [2, 2, 1] => 3,
+            [2, 1, 1, 1] => 2,
             _ => 1,
         };
 
@@ -104,7 +119,14 @@ mod tests {
     }
 
     #[test]
-    fn part1() {
+    fn joker() {
+        let l = Hand::from_input("KTJJT");
+        let r = Hand::from_input("QQQJA");
+        assert_eq!(Ordering::Greater, l.partial_cmp(&r).unwrap())
+    }
+
+    #[test]
+    fn example() {
         let lines = [
             "32T3K 765",
             "T55J5 684",
@@ -114,6 +136,6 @@ mod tests {
         ]
         .map(String::from);
         let winnings = get_winnings(&lines);
-        assert_eq!(6440, winnings);
+        assert_eq!(5905, winnings);
     }
 }
